@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family July Routing — Interactive Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --navy:#0c1330;
+    --navy-2:#101a3d;
+    --panel:#131e44;
+    --panel-edge:#22305c;
+    --grid:#1f2c54;
+    --ocean:#0e1838;
+    --ink:#eaf0ff;
+    --ink-soft:#9fb0d8;
+    --ink-faint:#697aa6;
+    --slate:#8493ba;
+    --amber:#f5b73e;
+    --teal:#36d6c4;
+    --book:#ff6f6f;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#0c1330}
+  body{
+    background:
+      radial-gradient(1200px 600px at 18% -10%, #16224a 0%, transparent 55%),
+      radial-gradient(1000px 700px at 105% 120%, #161f48 0%, transparent 50%),
+      var(--navy);
+    color:var(--ink);
+    font-family:"Space Grotesk", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:clamp(14px,3vw,38px);
+    min-height:100vh;
+  }
+  .wrap{max-width:1280px;margin:0 auto}
+  
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--amber);margin:0 0 9px
+  }
+  h1{
+    font-size:clamp(25px,4.2vw,44px);line-height:1.02;margin:0;font-weight:700;letter-spacing:-.015em
+  }
+  h1 .codes{color:var(--ink-soft);font-weight:500}
+  .meta{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    text-align:right;color:var(--ink-faint);font-size:12px;line-height:1.7;
+    border-left:1px solid var(--panel-edge);padding-left:16px
+  }
+  .meta b{color:var(--ink-soft);font-weight:600}
+
+  .content{display:flex;flex-direction:column;gap:14px}
+
+  .card{
+    background:linear-gradient(180deg,var(--panel) 0%, var(--navy-2) 100%);
+    border:1px solid var(--panel-edge);
+    border-radius:18px;
+    box-shadow:0 28px 70px -34px #000, inset 0 1px 0 rgba(255,255,255,.04);
+    overflow:hidden
+  }
+  
+  .map-card{padding:7px;position:relative}
+  #map{height:clamp(440px,66vh,720px);width:100%;border-radius:13px;background:#0e1838;z-index:0}
+  .map-hint{position:absolute;top:18px;left:18px;z-index:1000;pointer-events:none;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);background:rgba(12,19,48,0.72);border:1px solid var(--panel-edge);border-radius:8px;padding:6px 11px;backdrop-filter:blur(4px)}
+
+  .leaflet-container{background:#0e1838;font-family:'Space Grotesk',sans-serif;outline:none}
+  .leaflet-popup-content-wrapper{background:linear-gradient(180deg,#131e44,#101a3d);color:#eaf0ff;border:1px solid #2a3a6c;border-radius:13px;box-shadow:0 24px 60px -22px #000}
+  .leaflet-popup-content{margin:13px 15px;line-height:1.4;font-family:'Space Grotesk',sans-serif}
+  .leaflet-popup-tip{background:#111b40;border:1px solid #2a3a6c}
+  .leaflet-popup-close-button{color:#6b7caa !important;padding:6px 7px 0 0 !important}
+  .leaflet-popup-close-button:hover{color:#eaf0ff !important}
+  .leaflet-control-zoom a{background:#131e44;color:#9fb0d8;border-color:#22305c}
+  .leaflet-control-zoom a:hover{background:#1a2756;color:#eaf0ff}
+  .leaflet-control-attribution{background:rgba(12,19,48,0.72) !important;color:#5d6e9c !important;font-size:10px}
+  .leaflet-control-attribution a{color:#8493ba !important}
+  
+  .chip-mk{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:600 12px 'IBM Plex Mono',monospace;color:#0c1330;background:var(--c);box-shadow:0 2px 9px rgba(0,0,0,0.55),0 0 0 2px rgba(12,19,48,0.55);border:1.5px solid rgba(12,19,48,0.35);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
+  .chip-mk:hover,.chip-mk.active{transform:scale(1.28);box-shadow:0 3px 14px var(--c),0 0 0 3px rgba(255,255,255,0.16)}
+  .city-mk{display:flex;flex-direction:column;align-items:center;pointer-events:auto}
+  .city-dot{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 4px rgba(12,19,48,0.55),0 0 16px var(--c)}
+  .city-code{margin-top:5px;font:600 12px 'IBM Plex Mono',monospace;color:#eaf0ff;text-shadow:0 1px 5px #000,0 0 10px rgba(0,0,0,0.85);letter-spacing:.05em;white-space:nowrap}
+
+  .legend{padding:18px clamp(14px,2vw,22px)}
+  .legend h2{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--ink-faint);margin:0 0 14px;font-weight:600
+  }
+  .leg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:10px;margin-bottom:16px}
+  .leg-card{display:grid;grid-template-columns:24px 1fr;gap:11px;align-items:start;padding:11px 12px;border:1px solid var(--panel-edge);border-radius:12px;background:rgba(255,255,255,0.016);cursor:pointer;transition:background .15s ease,border-color .15s ease}
+  .leg-card:hover{background:rgba(255,255,255,0.05);border-color:#3a4a7c}
+  .leg-num{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#0c1330;margin-top:1px}
+  .leg-info{display:flex;flex-direction:column;gap:3px}
+  .leg-header{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .leg-routes{font:600 14px 'IBM Plex Mono',monospace;color:#eaf0ff}
+  .leg-tag{font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;padding:1px 6px;border-radius:5px}
+  .leg-tag.book{color:var(--book);border:1px solid rgba(255,111,111,0.5)}
+  .leg-tag.booked{color:var(--ink-faint);border:1px solid var(--panel-edge)}
+  .leg-date{font:500 11px 'IBM Plex Mono',monospace;color:var(--ink-soft)}
+  .leg-airline{font:400 11px 'IBM Plex Mono',monospace;color:var(--ink-faint)}
+  .leg-price{font:600 11.5px 'IBM Plex Mono',monospace;color:#cdd8f5;margin-top:5px}
+
+  .key{display:flex;flex-wrap:wrap;gap:12px 20px;border-top:1px solid var(--panel-edge);padding-top:14px}
+  .key-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft)}
+  .swatch{width:22px;height:0;border-top-width:3px;border-top-style:solid;border-radius:3px}
+  .swatch.slate{border-color:var(--slate);border-top-style:dashed}
+  .swatch.amber{border-color:var(--amber)}
+  .swatch.teal{border-color:var(--teal)}
+
+  footer{
+    font-family:"IBM Plex Mono",monospace;color:var(--ink-faint);font-size:11px;
+    margin-top:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+    border-top:1px solid var(--panel-edge);padding-top:12px
+  }
+
+  @media (max-width:640px){
+    .leg-grid{grid-template-columns:1fr}
+    .meta{text-align:left;border-left:none;padding-left:0;margin-top:8px}
+  }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail" data-bg-color="#0c1330">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#0c1330"/>
+    <path d="M250 470 Q500 300 760 360" fill="none" stroke="#f5b73e" stroke-width="10" stroke-linecap="round"/>
+    <path d="M760 360 Q860 470 920 520" fill="none" stroke="#36d6c4" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="250" cy="470" r="16" fill="#eaf0ff"/>
+    <circle cx="760" cy="360" r="16" fill="#f5b73e"/>
+    <circle cx="920" cy="520" r="16" fill="#36d6c4"/>
+  </svg>
+</template>
+
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">Family Itinerary · July 2026</p>
+      <h1>Five airports, one summer<br><span class="codes">DFW · BER · TLV · SKG · FRA</span></h1>
+    </div>
+    <div class="meta">
+      <div><b>3 travelers</b> · Vered, Shy, kids</div>
+      <div><b>9 legs</b> · 7 to book, 2 booked</div>
+      <div>handoff <b>Tel Aviv</b> · vacation <b>Thessaloniki</b></div>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="card map-card">
+      <div class="map-hint">Hover or tap a number for details</div>
+      <div id="map"></div>
+    </div>
+
+    <div class="card legend">
+      <h2>Legs in order — tap a card to fly there</h2>
+      <div class="leg-grid" id="legGrid"></div>
+      <div class="key">
+        <div class="key-item"><span class="swatch slate"></span>Already booked</div>
+        <div class="key-item"><span class="swatch amber"></span>Shy · transatlantic + feeders</div>
+        <div class="key-item"><span class="swatch teal"></span>Family · Mediterranean legs</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Arrowheads show direction of travel · solid = flight · dashed = booked anchor · dotted = ground option (leg 7)</span>
+    <span>Fares marked "est." are indicative — subject to live availability</span>
+  </footer>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
+<script>
+const palette = {slate:'#8493ba', amber:'#f5b73e', teal:'#36d6c4'};
+const cities = {
+  DFW:{ll:[32.90,-97.04],name:'Dallas / Fort Worth',role:'Home base',c:'#eaf0ff'},
+  FRA:{ll:[50.04,8.56],name:'Frankfurt',role:'Shy · European hub',c:'#f5b73e'},
+  BER:{ll:[52.37,13.50],name:'Berlin',role:'Family reunion',c:'#eaf0ff'},
+  SKG:{ll:[40.52,22.97],name:'Thessaloniki',role:'Greek vacation',c:'#36d6c4'},
+  TLV:{ll:[32.01,34.88],name:'Tel Aviv',role:'Israel handoff',c:'#eaf0ff'},
+};
+
+const legsData = [
+  {n:1,from:'DFW',to:'BER',color:'slate',date:'Jun 22',who:'Vered + 3 kids',airline:'Transatlantic outbound',price:'Booked',status:'BOOKED'},
+  {n:2,from:'BER',to:'TLV',color:'teal',date:'Jul 2 · Thu',who:'Vered + 3 kids',airline:'El Al / Israir · nonstop daytime',price:'est. ≈ $210 / person',status:'BOOK'},
+  {n:3,from:'DFW',to:'FRA',color:'amber',date:'Jul 3',who:'Shy',airline:'American · nonstop ~9.5h',price:'est. ≈ $880 round-trip (with leg 9)',status:'BOOK'},
+  {n:4,from:'FRA',to:'TLV',color:'amber',date:'Jul 3–4',who:'Shy',airline:'El Al · nonstop feeder',price:'est. ≈ $250',status:'BOOK'},
+  {n:5,from:'TLV',to:'SKG',color:'teal',date:'Jul 15',who:'Shy + 3 kids',airline:'El Al 05:15 / Arkia 07:00',price:'est. ≈ $170 / person',status:'BOOK'},
+  {n:6,from:'SKG',to:'BER',color:'teal',date:'Jul 19',who:'Shy + 3 kids',airline:'easyJet / Aegean · nonstop',price:'est. ≈ $115 / person',status:'BOOK'},
+  {n:7,from:'BER',to:'FRA',color:'amber',date:'Jul 20–21',who:'Shy',airline:'ICE train / drive / fly',price:'est. ≈ $90 · ICE train',status:'BOOK'},
+  {n:8,from:'BER',to:'DFW',color:'slate',date:'Jul 21',who:'Vered + 3 kids',airline:'Transatlantic return',price:'Booked',status:'BOOKED'},
+  {n:9,from:'FRA',to:'DFW',color:'amber',date:'Jul 22',who:'Shy',airline:'American · return of DFW↔FRA RT',price:'Incl. in leg 3 round-trip',status:'BOOK'},
+];
+
+const bends = {1:-0.16,2:0.18,3:-0.22,4:-0.10,5:0.22,6:-0.16,7:0.26,8:0.20,9:0.10};
+const dashes = {1:'4 7',7:'1 7',8:'4 7'};
+
+function curve(a,b,k){
+  const lat1=a[0],lng1=a[1],lat2=b[0],lng2=b[1];
+  const mlat=(lat1+lat2)/2, mlng=(lng1+lng2)/2;
+  const dlat=lat2-lat1, dlng=lng2-lng1;
+  const clat=mlat - dlng*k, clng=mlng + dlat*k;
+  const pts=[];
+  for(let t=0;t<=1.0001;t+=0.02){
+    const u=1-t;
+    pts.push([u*u*lat1+2*u*t*clat+t*t*lat2, u*u*lng1+2*u*t*clng+t*t*lng2]);
+  }
+  return pts;
+}
+
+function popupHTML(l){
+  const accent = l.status==='BOOKED'?'#697aa6':'#ff6f6f';
+  const col = palette[l.color];
+  const popRow = (k,v) => `<div style="display:flex;gap:10px;margin-top:6px"><span style="flex:0 0 62px;font:500 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#697aa6">${k}</span><span style="font:500 12.5px 'Space Grotesk',sans-serif;color:#dbe4ff">${v}</span></div>`;
+  return `<div style="font-family:'Space Grotesk',sans-serif;min-width:196px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+      <span style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0c1330;background:${col}">${l.n}</span>
+      <span style="font:600 16px 'IBM Plex Mono',monospace;color:#eaf0ff">${l.from} → ${l.to}</span>
+      <span style="margin-left:auto;font:600 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;padding:2px 7px;border-radius:5px;color:${accent};border:1px solid ${accent}">${l.status}</span>
+    </div>
+    <div style="display:flex;flex-direction:column">
+      ${popRow('Date',l.date)}
+      ${popRow('Travelers',l.who)}
+      ${popRow('Routing',l.airline)}
+      ${popRow('Fare',l.price)}
+    </div>
+  </div>`;
+}
+
+// Initialize map
+const map = L.map('map').setView([45, 10], 4);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
+
+const legObjs = {};
+const allPts = [];
+
+// Draw legs
+legsData.forEach(l => {
+  const a = cities[l.from].ll, b = cities[l.to].ll;
+  const pts = curve(a,b,bends[l.n]);
+  allPts.push(...pts);
+  const col = palette[l.color];
+  const weight = l.status==='BOOKED'?2.4:3;
+  const line = L.polyline(pts,{color:col,weight,opacity:0.9,dashArray:dashes[l.n]||null,lineCap:'round'}).addTo(map);
+  line.baseWeight = weight;
+  
+  const mid = pts[Math.floor(pts.length/2)];
+  const chip = L.marker(mid,{icon:L.divIcon({className:'',html:`<div class="chip-mk" style="--c:${col}">${l.n}</div>`,iconSize:[30,30],iconAnchor:[15,15]}),riseOnHover:true,zIndexOffset:600}).addTo(map);
+  const pop = popupHTML(l);
+  
+  line.bindPopup(pop,{maxWidth:280});
+  chip.bindPopup(pop,{maxWidth:280});
+  chip.on('mouseover',()=>chip.openPopup());
+  line.on('mouseover',()=>line.setStyle({weight:line.baseWeight+2,opacity:1}));
+  line.on('mouseout',()=>line.setStyle({weight:line.baseWeight,opacity:0.9}));
+  
+  legObjs[l.n] = {line,chip,mid,col};
+});
+
+// Draw city nodes
+Object.entries(cities).forEach(([code,c]) => {
+  const m = L.marker(c.ll,{icon:L.divIcon({className:'',html:`<div class="city-mk"><span class="city-dot" style="--c:${c.c}"></span><span class="city-code">${code}</span></div>`,iconSize:[64,46],iconAnchor:[32,7]}),zIndexOffset:1000}).addTo(map);
+  m.bindPopup(`<div style="font-family:'Space Grotesk',sans-serif"><div style="font:600 15px 'IBM Plex Mono',monospace;color:#eaf0ff">${code} · ${c.name}</div><div style="font:500 12px 'IBM Plex Mono',monospace;color:#9fb0d8;margin-top:4px">${c.role}</div></div>`,{maxWidth:240});
+});
+
+// Fit bounds
+const bounds = L.latLngBounds(allPts);
+map.fitBounds(bounds,{padding:[55,55]});
+setTimeout(()=>{ map.invalidateSize(); map.fitBounds(bounds,{padding:[55,55]}); },300);
+
+// Render legend cards
+const grid = document.getElementById('legGrid');
+legsData.forEach(l => {
+  const card = document.createElement('div');
+  card.className = 'leg-card';
+  card.innerHTML = `
+    <span class="leg-num" style="background:${palette[l.color]}">${l.n}</span>
+    <div class="leg-info">
+      <div class="leg-header">
+        <span class="leg-routes">${l.from} → ${l.to}</span>
+        <span class="leg-tag ${l.status==='BOOKED'?'booked':'book'}">${l.status}</span>
+      </div>
+      <div class="leg-date">${l.date} · ${l.who}</div>
+      <div class="leg-airline">${l.airline}</div>
+      <div class="leg-price">${l.price}</div>
+    </div>
+  `;
+  card.addEventListener('mouseenter', () => {
+    legObjs[l.n]?.line.setStyle({weight:legObjs[l.n].line.baseWeight+2,opacity:1});
+    legObjs[l.n]?.line.bringToFront();
+    if(legObjs[l.n]?.chip._icon?.firstChild) legObjs[l.n].chip._icon.firstChild.classList.add('active');
+  });
+  card.addEventListener('mouseleave', () => {
+    legObjs[l.n]?.line.setStyle({weight:legObjs[l.n].line.baseWeight,opacity:0.9});
+    if(legObjs[l.n]?.chip._icon?.firstChild) legObjs[l.n].chip._icon.firstChild.classList.remove('active');
+  });
+  card.addEventListener('click', () => {
+    map.panTo(legObjs[l.n].mid,{animate:true});
+    legObjs[l.n].chip.openPopup();
+  });
+  grid.appendChild(card);
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  map.invalidateSize();
+  map.fitBounds(bounds,{padding:[55,55]});
+});
+</script>
+</body>
+</html>

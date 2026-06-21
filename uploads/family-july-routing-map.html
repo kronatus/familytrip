@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family July Routing — Flight Chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0c1330;
+    --navy-2:#101a3d;
+    --panel:#131e44;
+    --panel-edge:#22305c;
+    --grid:#1f2c54;
+    --ocean:#0e1838;
+    --ink:#eaf0ff;
+    --ink-soft:#9fb0d8;
+    --ink-faint:#697aa6;
+    --slate:#8493ba;     /* already booked */
+    --amber:#f5b73e;     /* Shy's transatlantic + feeders */
+    --teal:#36d6c4;      /* family Mediterranean legs */
+    --book:#ff6f6f;      /* "BOOK" tag accent */
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 18% -10%, #16224a 0%, transparent 55%),
+      radial-gradient(1000px 700px at 105% 120%, #161f48 0%, transparent 50%),
+      var(--navy);
+    color:var(--ink);
+    font-family:"Space Grotesk", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:clamp(16px,3vw,40px);
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--amber);margin:0 0 10px
+  }
+  h1{
+    font-size:clamp(26px,4.4vw,46px);line-height:1.02;margin:0;font-weight:700;letter-spacing:-.015em
+  }
+  h1 .codes{color:var(--ink-soft);font-weight:500}
+  .meta{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    text-align:right;color:var(--ink-faint);font-size:12px;line-height:1.7;
+    border-left:1px solid var(--panel-edge);padding-left:16px
+  }
+  .meta b{color:var(--ink-soft);font-weight:600}
+
+  .board{
+    display:grid;grid-template-columns:1.55fr .9fr;gap:18px;align-items:stretch
+  }
+  @media (max-width:880px){ .board{grid-template-columns:1fr} }
+
+  .card{
+    background:linear-gradient(180deg,var(--panel) 0%, var(--navy-2) 100%);
+    border:1px solid var(--panel-edge);
+    border-radius:16px;
+    box-shadow:0 24px 60px -30px #000, inset 0 1px 0 rgba(255,255,255,.04);
+    overflow:hidden
+  }
+  .map-card{padding:6px}
+  svg{display:block;width:100%;height:auto}
+
+  /* arc draw-in */
+  .arc{fill:none;stroke-linecap:round}
+  @media (prefers-reduced-motion:no-preference){
+    .arc{stroke-dasharray:1600;stroke-dashoffset:1600;animation:draw 1.05s cubic-bezier(.6,.02,.2,1) forwards}
+    .chip,.node{opacity:0;animation:pop .4s ease forwards}
+  }
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes pop{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  .legend{padding:18px 18px 16px;display:flex;flex-direction:column;gap:14px}
+  .legend h2{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--ink-faint);margin:0;font-weight:600
+  }
+  ol.legs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  ol.legs li{display:grid;grid-template-columns:22px 1fr;gap:11px;align-items:start}
+  .num{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+    width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+    color:var(--navy);background:var(--slate);margin-top:1px
+  }
+  .num.amber{background:var(--amber)} .num.teal{background:var(--teal)} .num.slate{background:var(--slate)}
+  .leg-main{font-size:13.5px;line-height:1.32;font-weight:600}
+  .leg-main .ar{color:var(--ink-faint);font-weight:500;padding:0 3px}
+  .leg-sub{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);margin-top:2px;line-height:1.4
+  }
+  .tag{
+    display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600;
+    letter-spacing:.08em;padding:1px 6px;border-radius:5px;vertical-align:middle;margin-left:6px
+  }
+  .tag.book{color:var(--book);border:1px solid color-mix(in srgb,var(--book) 55%, transparent)}
+  .tag.booked{color:var(--ink-faint);border:1px solid var(--panel-edge)}
+
+  .key{display:flex;flex-wrap:wrap;gap:12px 18px;border-top:1px solid var(--panel-edge);padding-top:14px;margin-top:2px}
+  .key div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft)}
+  .swatch{width:22px;height:0;border-top-width:3px;border-top-style:solid;border-radius:3px}
+  .swatch.slate{border-color:var(--slate);border-top-style:dashed}
+  .swatch.amber{border-color:var(--amber)}
+  .swatch.teal{border-color:var(--teal)}
+
+  footer{
+    font-family:"IBM Plex Mono",monospace;color:var(--ink-faint);font-size:11px;
+    margin-top:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+    border-top:1px solid var(--panel-edge);padding-top:12px
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">Family Itinerary · July 2026</p>
+      <h1>Five airports, one summer<br><span class="codes">DFW · BER · TLV · SKG · FRA</span></h1>
+    </div>
+    <div class="meta">
+      <div><b>3 travelers</b> tracked · Vered, Shy, kids</div>
+      <div><b>9 legs</b> · 7 to book, 2 booked</div>
+      <div>handoff <b>Tel Aviv</b> · vacation <b>Thessaloniki</b></div>
+    </div>
+  </header>
+
+  <div class="board">
+
+    <!-- MAP -->
+    <div class="card map-card">
+      <svg viewBox="0 0 980 482" role="img" aria-labelledby="mapTitle mapDesc">
+        <title id="mapTitle">July routing flight chart</title>
+        <desc id="mapDesc">Nine numbered directional flight legs between Dallas, Berlin, Tel Aviv, Thessaloniki and Frankfurt.</desc>
+        <defs>
+          <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="3.4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <marker id="ah-slate" markerWidth="9" markerHeight="9" refX="6.4" refY="3.2" orient="auto">
+            <path d="M0,0 L6.6,3.2 L0,6.4 L1.7,3.2 Z" fill="var(--slate)"/>
+          </marker>
+          <marker id="ah-amber" markerWidth="9" markerHeight="9" refX="6.4" refY="3.2" orient="auto">
+            <path d="M0,0 L6.6,3.2 L0,6.4 L1.7,3.2 Z" fill="var(--amber)"/>
+          </marker>
+          <marker id="ah-teal" markerWidth="9" markerHeight="9" refX="6.4" refY="3.2" orient="auto">
+            <path d="M0,0 L6.6,3.2 L0,6.4 L1.7,3.2 Z" fill="var(--teal)"/>
+          </marker>
+        </defs>
+
+        <!-- backdrop -->
+        <rect x="0" y="0" width="980" height="482" fill="var(--ocean)"/>
+        <!-- region glows: ground two clusters without fake coastlines -->
+        <circle cx="115" cy="250" r="120" fill="#16224d" opacity="0.55"/>
+        <circle cx="700" cy="250" r="190" fill="#17234f" opacity="0.55"/>
+        <!-- graticule -->
+        <g stroke="var(--grid)" stroke-width="1" opacity="0.5">
+          <line x1="0" y1="80" x2="980" y2="80"/>
+          <line x1="0" y1="160" x2="980" y2="160"/>
+          <line x1="0" y1="240" x2="980" y2="240"/>
+          <line x1="0" y1="320" x2="980" y2="320"/>
+          <line x1="0" y1="400" x2="980" y2="400"/>
+          <line x1="160" y1="0" x2="160" y2="482"/>
+          <line x1="320" y1="0" x2="320" y2="482"/>
+          <line x1="480" y1="0" x2="480" y2="482"/>
+          <line x1="640" y1="0" x2="640" y2="482"/>
+          <line x1="800" y1="0" x2="800" y2="482"/>
+        </g>
+        <!-- ocean label -->
+        <text x="330" y="445" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="11" letter-spacing="3" opacity="0.7">— ATLANTIC CROSSING —</text>
+
+        <!-- ===== ARCS (numbered chronologically) ===== -->
+        <!-- 1 DFW->BER booked -->
+        <path class="arc" d="M110,250 Q380,108 660,150" stroke="var(--slate)" stroke-width="2.4" stroke-dasharray="2 7" marker-end="url(#ah-slate)" opacity="0.85" style="animation-delay:.05s"/>
+        <!-- 3 DFW->FRA Shy out -->
+        <path class="arc" d="M110,250 Q340,192 560,215" stroke="var(--amber)" stroke-width="3" marker-end="url(#ah-amber)" style="animation-delay:.30s"/>
+        <!-- 9 FRA->DFW Shy return -->
+        <path class="arc" d="M560,215 Q340,300 110,250" stroke="var(--amber)" stroke-width="2.6" marker-end="url(#ah-amber)" opacity="0.92" style="animation-delay:.85s"/>
+        <!-- 8 BER->DFW booked return -->
+        <path class="arc" d="M660,150 Q380,372 110,250" stroke="var(--slate)" stroke-width="2.4" stroke-dasharray="2 7" marker-end="url(#ah-slate)" opacity="0.85" style="animation-delay:.78s"/>
+        <!-- 2 BER->TLV Vered+kids -->
+        <path class="arc" d="M660,150 Q812,206 860,360" stroke="var(--teal)" stroke-width="3" marker-end="url(#ah-teal)" style="animation-delay:.18s"/>
+        <!-- 4 FRA->TLV Shy feeder -->
+        <path class="arc" d="M560,215 Q690,338 860,360" stroke="var(--amber)" stroke-width="3" marker-end="url(#ah-amber)" style="animation-delay:.42s"/>
+        <!-- 5 TLV->SKG -->
+        <path class="arc" d="M860,360 Q784,402 700,330" stroke="var(--teal)" stroke-width="3" marker-end="url(#ah-teal)" style="animation-delay:.54s"/>
+        <!-- 6 SKG->BER -->
+        <path class="arc" d="M700,330 Q616,244 660,150" stroke="var(--teal)" stroke-width="3" marker-end="url(#ah-teal)" style="animation-delay:.66s"/>
+        <!-- 7 BER->FRA positioning (dotted: train/drive/fly) -->
+        <path class="arc" d="M660,150 Q598,166 560,215" stroke="var(--amber)" stroke-width="2.6" stroke-dasharray="1 6" marker-end="url(#ah-amber)" style="animation-delay:.72s"/>
+
+        <!-- ===== NUMBER CHIPS ===== -->
+        <g font-family="IBM Plex Mono, monospace" font-size="11" font-weight="600" text-anchor="middle">
+          <g class="chip" style="animation-delay:.5s"><circle cx="384" cy="140" r="10.5" fill="var(--slate)"/><text x="384" y="144" fill="#0c1330">1</text></g>
+          <g class="chip" style="animation-delay:.5s"><circle cx="812" cy="212" r="10.5" fill="var(--teal)"/><text x="812" y="216" fill="#0c1330">2</text></g>
+          <g class="chip" style="animation-delay:.55s"><circle cx="338" cy="214" r="10.5" fill="var(--amber)"/><text x="338" y="218" fill="#0c1330">3</text></g>
+          <g class="chip" style="animation-delay:.6s"><circle cx="694" cy="324" r="10.5" fill="var(--amber)"/><text x="694" y="328" fill="#0c1330">4</text></g>
+          <g class="chip" style="animation-delay:.65s"><circle cx="788" cy="382" r="10.5" fill="var(--teal)"/><text x="788" y="386" fill="#0c1330">5</text></g>
+          <g class="chip" style="animation-delay:.7s"><circle cx="620" cy="238" r="10.5" fill="var(--teal)"/><text x="620" y="242" fill="#0c1330">6</text></g>
+          <g class="chip" style="animation-delay:.75s"><circle cx="600" cy="170" r="10.5" fill="var(--amber)"/><text x="600" y="174" fill="#0c1330">7</text></g>
+          <g class="chip" style="animation-delay:.8s"><circle cx="384" cy="338" r="10.5" fill="var(--slate)"/><text x="384" y="342" fill="#0c1330">8</text></g>
+          <g class="chip" style="animation-delay:.85s"><circle cx="312" cy="286" r="10.5" fill="var(--amber)"/><text x="312" y="290" fill="#0c1330">9</text></g>
+        </g>
+
+        <!-- ===== CITY NODES ===== -->
+        <g text-anchor="middle">
+          <!-- DFW -->
+          <g class="node" style="animation-delay:.1s" filter="url(#glow)">
+            <circle cx="110" cy="250" r="6.5" fill="var(--ink)"/><circle cx="110" cy="250" r="11" fill="none" stroke="var(--ink)" stroke-width="1.4" opacity="0.5"/>
+          </g>
+          <text x="110" y="285" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="14" font-weight="600">DFW</text>
+          <text x="110" y="300" fill="var(--ink-faint)" font-family="Space Grotesk, sans-serif" font-size="11">Dallas · home</text>
+          <!-- FRA -->
+          <g class="node" style="animation-delay:.16s" filter="url(#glow)">
+            <circle cx="560" cy="215" r="6.5" fill="var(--amber)"/><circle cx="560" cy="215" r="11" fill="none" stroke="var(--amber)" stroke-width="1.4" opacity="0.55"/>
+          </g>
+          <text x="560" y="200" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="14" font-weight="600">FRA</text>
+          <text x="528" y="244" fill="var(--ink-faint)" font-family="Space Grotesk, sans-serif" font-size="11" text-anchor="end">Frankfurt · hub</text>
+          <!-- BER -->
+          <g class="node" style="animation-delay:.13s" filter="url(#glow)">
+            <circle cx="660" cy="150" r="6.5" fill="var(--ink)"/><circle cx="660" cy="150" r="11" fill="none" stroke="var(--ink)" stroke-width="1.4" opacity="0.5"/>
+          </g>
+          <text x="660" y="133" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="14" font-weight="600">BER</text>
+          <text x="700" y="151" fill="var(--ink-faint)" font-family="Space Grotesk, sans-serif" font-size="11" text-anchor="start">Berlin · reunion</text>
+          <!-- SKG -->
+          <g class="node" style="animation-delay:.22s" filter="url(#glow)">
+            <circle cx="700" cy="330" r="6.5" fill="var(--teal)"/><circle cx="700" cy="330" r="11" fill="none" stroke="var(--teal)" stroke-width="1.4" opacity="0.55"/>
+          </g>
+          <text x="700" y="358" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="14" font-weight="600">SKG</text>
+          <text x="668" y="372" fill="var(--ink-faint)" font-family="Space Grotesk, sans-serif" font-size="11" text-anchor="end">Thessaloniki</text>
+          <!-- TLV -->
+          <g class="node" style="animation-delay:.19s" filter="url(#glow)">
+            <circle cx="860" cy="360" r="6.5" fill="var(--ink)"/><circle cx="860" cy="360" r="11" fill="none" stroke="var(--ink)" stroke-width="1.4" opacity="0.5"/>
+          </g>
+          <text x="860" y="343" fill="var(--ink)" font-family="IBM Plex Mono, monospace" font-size="14" font-weight="600">TLV</text>
+          <text x="860" y="392" fill="var(--ink-faint)" font-family="Space Grotesk, sans-serif" font-size="11">Tel Aviv · handoff</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="card legend">
+      <h2>Legs in order</h2>
+      <ol class="legs">
+        <li><span class="num slate">1</span><div><div class="leg-main">DFW <span class="ar">→</span> BER<span class="tag booked">BOOKED</span></div><div class="leg-sub">Jun 22 · Vered + 3 kids</div></div></li>
+        <li><span class="num teal">2</span><div><div class="leg-main">BER <span class="ar">→</span> TLV<span class="tag book">BOOK</span></div><div class="leg-sub">Jul 2 (Thu) · Vered + 3 kids · El&nbsp;Al / Israir · nonstop daytime</div></div></li>
+        <li><span class="num amber">3</span><div><div class="leg-main">DFW <span class="ar">→</span> FRA<span class="tag book">BOOK</span></div><div class="leg-sub">Jul 3 · Shy · American · nonstop ~9.5h</div></div></li>
+        <li><span class="num amber">4</span><div><div class="leg-main">FRA <span class="ar">→</span> TLV<span class="tag book">BOOK</span></div><div class="leg-sub">Jul 3–4 · Shy · El&nbsp;Al · nonstop feeder</div></div></li>
+        <li><span class="num teal">5</span><div><div class="leg-main">TLV <span class="ar">→</span> SKG<span class="tag book">BOOK</span></div><div class="leg-sub">Jul 15 · Shy + 3 kids · El&nbsp;Al 05:15 / Arkia 07:00</div></div></li>
+        <li><span class="num teal">6</span><div><div class="leg-main">SKG <span class="ar">→</span> BER<span class="tag book">BOOK</span></div><div class="leg-sub">Jul 19 · 3 kids + Shy · easyJet / Aegean · nonstop</div></div></li>
+        <li><span class="num amber">7</span><div><div class="leg-main">BER <span class="ar">→</span> FRA<span class="tag book">BOOK</span></div><div class="leg-sub">Jul 20–21 · Shy · ICE train / drive / fly</div></div></li>
+        <li><span class="num slate">8</span><div><div class="leg-main">BER <span class="ar">→</span> DFW<span class="tag booked">BOOKED</span></div><div class="leg-sub">Jul 21 · Vered + 3 kids</div></div></li>
+        <li><span class="num amber">9</span><div><div class="leg-main">FRA <span class="ar">→</span> DFW<span class="tag book">BOOK</span></div><div class="leg-sub">Jul 22 · Shy · American · return of DFW↔FRA RT</div></div></li>
+      </ol>
+      <div class="key">
+        <div><span class="swatch slate"></span>Already booked</div>
+        <div><span class="swatch amber"></span>Shy · transatlantic + feeders</div>
+        <div><span class="swatch teal"></span>Family · Mediterranean legs</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Solid line = flight · dashed = booked anchor · dotted = ground option (leg 7)</span>
+    <span>Arrowheads show direction of travel · indicative plan, fares subject to live availability</span>
+  </footer>
+</div>
+</body>
+</html>

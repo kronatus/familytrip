@@ -1,0 +1,19 @@
+{
+  "name": "family-july-routing-map",
+  "version": "1.0.0",
+  "description": "Interactive map-based travel interface for multi-leg family journey",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "start": "python -m http.server 8000"
+  },
+  "keywords": [
+    "travel",
+    "map",
+    "interactive",
+    "leaflet",
+    "responsive"
+  ],
+  "author": "",
+  "license": "MIT"
+}
