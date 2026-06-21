@@ -16,8 +16,8 @@ An interactive map-based travel interface showing a family's multi-leg journey a
 ### Vercel (recommended)
 
 1. Push this repo to GitHub
-2. Connect to [Vercel](https://vercel.com)
-3. Vercel auto-deploys on every push — done!
+2. Connect to Github Pages
+3. Pages auto-deploys on every push, link provided in pages tab — done!
 
 ### Other hosts
 
