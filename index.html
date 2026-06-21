@@ -95,6 +95,10 @@
   .leg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:10px;margin-bottom:16px}
   .leg-card{display:grid;grid-template-columns:24px 1fr;gap:11px;align-items:start;padding:11px 12px;border:1px solid var(--panel-edge);border-radius:12px;background:rgba(255,255,255,0.016);cursor:pointer;transition:background .15s ease,border-color .15s ease}
   .leg-card:hover{background:rgba(255,255,255,0.05);border-color:#3a4a7c}
+  .leg-card.solo{border-color:#f5b73e;background:rgba(245,183,62,0.08)}
+  .leg-card.dimmed{opacity:0.35}
+  [contenteditable]{outline:none;border-radius:4px;padding:1px 3px;margin:-1px -3px;cursor:text}
+  [contenteditable]:focus{background:rgba(255,255,255,0.09);box-shadow:0 0 0 1.5px #36d6c4}
   .leg-num{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#0c1330;margin-top:1px}
   .leg-info{display:flex;flex-direction:column;gap:3px}
   .leg-header{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
@@ -268,33 +272,98 @@ const grid = document.getElementById('legGrid');
 legsData.forEach(l => {
   const card = document.createElement('div');
   card.className = 'leg-card';
+  const ed = (cls, val, field) => `<span class="${cls}" contenteditable="true" data-leg="${l.n}" data-field="${field}">${val}</span>`;
   card.innerHTML = `
     <span class="leg-num" style="background:${palette[l.color]}">${l.n}</span>
     <div class="leg-info">
       <div class="leg-header">
-        <span class="leg-routes">${l.from} → ${l.to}</span>
+        <span class="leg-routes">${ed('leg-routes', l.from+' → '+l.to, 'route')}</span>
         <span class="leg-tag ${l.status==='BOOKED'?'booked':'book'}">${l.status}</span>
       </div>
-      <div class="leg-date">${l.date} · ${l.who}</div>
-      <div class="leg-airline">${l.airline}</div>
-      <div class="leg-price">${l.price}</div>
+      <div class="leg-date">${ed('leg-date', l.date+' · '+l.who, 'date')}</div>
+      <div class="leg-airline">${ed('leg-airline', l.airline, 'airline')}</div>
+      <div class="leg-price">${ed('leg-price', l.price, 'price')}</div>
     </div>
   `;
+
+  // Sync editable fields back to data + popup
+  card.querySelectorAll('[contenteditable]').forEach(el => {
+    el.addEventListener('input', () => {
+      const field = el.dataset.field;
+      const val = el.textContent;
+      if(field==='route') l.from = val.split('→')[0]?.trim()||l.from, l.to = val.split('→')[1]?.trim()||l.to;
+      if(field==='date') { const p=val.split('·'); l.date=p[0]?.trim()||l.date; l.who=p[1]?.trim()||l.who; }
+      if(field==='airline') l.airline = val;
+      if(field==='price') l.price = val;
+      legObjs[l.n]?.chip.setPopupContent(popupHTML(l));
+      legObjs[l.n]?.line.setPopupContent(popupHTML(l));
+    });
+    // Prevent card click when editing
+    el.addEventListener('click', e => e.stopPropagation());
+  });
+
   card.addEventListener('mouseenter', () => {
+    if(soloLeg!==null) return;
     legObjs[l.n]?.line.setStyle({weight:legObjs[l.n].line.baseWeight+2,opacity:1});
     legObjs[l.n]?.line.bringToFront();
     if(legObjs[l.n]?.chip._icon?.firstChild) legObjs[l.n].chip._icon.firstChild.classList.add('active');
   });
   card.addEventListener('mouseleave', () => {
+    if(soloLeg!==null) return;
     legObjs[l.n]?.line.setStyle({weight:legObjs[l.n].line.baseWeight,opacity:0.9});
     if(legObjs[l.n]?.chip._icon?.firstChild) legObjs[l.n].chip._icon.firstChild.classList.remove('active');
   });
   card.addEventListener('click', () => {
-    map.panTo(legObjs[l.n].mid,{animate:true});
-    legObjs[l.n].chip.openPopup();
+    if(soloLeg===l.n){ clearSolo(); return; }
+    setSolo(l.n);
   });
+  card.dataset.legN = l.n;
   grid.appendChild(card);
 });
+
+// Solo leg logic
+let soloLeg = null;
+const allCards = () => document.querySelectorAll('.leg-card');
+
+function setSolo(n) {
+  soloLeg = n;
+  const obj = legObjs[n];
+  legsData.forEach(d => {
+    const o = legObjs[d.n];
+    if(d.n === n) {
+      o.line.setStyle({opacity:1, weight:o.line.baseWeight+2});
+      o.line.bringToFront();
+      if(o.chip._icon?.firstChild) o.chip._icon.firstChild.classList.add('active');
+    } else {
+      o.line.setStyle({opacity:0.08, weight:o.line.baseWeight});
+      if(o.chip._icon?.firstChild) o.chip._icon.firstChild.classList.remove('active');
+      o.chip.setOpacity(0.2);
+    }
+  });
+  allCards().forEach(c => {
+    const cn = parseInt(c.dataset.legN);
+    c.classList.toggle('solo', cn===n);
+    c.classList.toggle('dimmed', cn!==n);
+  });
+  const pts = legObjs[n].line.getLatLngs();
+  map.fitBounds(L.latLngBounds(pts), {padding:[60,60], animate:true});
+  legObjs[n].chip.openPopup();
+}
+
+function clearSolo() {
+  soloLeg = null;
+  legsData.forEach(d => {
+    const o = legObjs[d.n];
+    o.line.setStyle({opacity:0.9, weight:o.line.baseWeight});
+    o.chip.setOpacity(1);
+    if(o.chip._icon?.firstChild) o.chip._icon.firstChild.classList.remove('active');
+  });
+  allCards().forEach(c => { c.classList.remove('solo','dimmed'); });
+  map.closePopup();
+  map.fitBounds(bounds, {padding:[55,55], animate:true});
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape' && soloLeg!==null) clearSolo(); });
 
 // Handle window resize
 window.addEventListener('resize', () => {
